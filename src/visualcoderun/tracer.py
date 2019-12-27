@@ -88,6 +88,7 @@ class TraceProcessor(Thread):
         Thread.__init__(self)
         self.trace_queue = Queue()
         self.keep_going = True
+        self.root_info_object = None
         self.now_info_object = None
         self.init_libpath()
 
@@ -111,7 +112,7 @@ class TraceProcessor(Thread):
             try:
                 data = self.trace_queue.get(timeout=0.1)
             except Empty:
-                pass
+                continue
             self.process(**data)
 
     def done(self):
@@ -127,6 +128,9 @@ class TraceProcessor(Thread):
         if full_name.startswith("visualcoderun."):
             return
 
+        if full_name.startswith("json."):
+            return
+
         if self.now_info_object is None:
             info = InfoObject(
                     prev_info_ob=None, 
@@ -137,6 +141,7 @@ class TraceProcessor(Thread):
                     args={},
                     lineno=0)
             self.now_info_object = info
+            self.root_info_object = info
 
         
         info2 = InfoObject(
@@ -161,6 +166,13 @@ class TraceProcessor(Thread):
 
         if full_name.startswith("visualcoderun."):
             return
+        
+        if full_name.startswith("json."):
+            return
+
+        if not self.now_info_object:
+            print(full_name, arg)
+            return 
 
         self.now_info_object.return_value = arg
         self.now_info_object = self.now_info_object.prev_info_ob
@@ -257,7 +269,7 @@ class TraceProcessor(Thread):
             return ret
 
         return json.dumps(
-            self.now_info_object,
+            self.root_info_object,
             default=serialize)
 
 
